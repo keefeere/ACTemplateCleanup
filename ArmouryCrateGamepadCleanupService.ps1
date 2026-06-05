@@ -4,11 +4,34 @@
 param(
     [int]$IntervalSeconds = 300,
     [int]$InitialDelaySeconds = 10,
-    [string]$CleanupScript = (Join-Path $PSScriptRoot 'ArmouryCrateGamepadCleanup.ps1'),
-    [string]$LogPath = (Join-Path $env:USERPROFILE 'ArmouryCrateGamepadCleanupService.log')
+    [string]$CleanupScript = '',
+    [string]$BasePath = '',
+    [string]$LogPath = ''
 )
 
 $ErrorActionPreference = 'Stop'
+
+$ScriptPath = if (-not [string]::IsNullOrWhiteSpace($PSCommandPath)) {
+    $PSCommandPath
+} else {
+    $MyInvocation.MyCommand.Path
+}
+
+$ScriptDirectory = if (-not [string]::IsNullOrWhiteSpace($ScriptPath)) {
+    Split-Path -Parent $ScriptPath
+} elseif (-not [string]::IsNullOrWhiteSpace($PSScriptRoot)) {
+    $PSScriptRoot
+} else {
+    (Get-Location).Path
+}
+
+if ([string]::IsNullOrWhiteSpace($CleanupScript)) {
+    $CleanupScript = Join-Path $ScriptDirectory 'ArmouryCrateGamepadCleanup.ps1'
+}
+
+if ([string]::IsNullOrWhiteSpace($LogPath)) {
+    $LogPath = Join-Path $ScriptDirectory 'ArmouryCrateGamepadCleanupService.log'
+}
 
 function Write-ServiceLog {
     param([Parameter(Mandatory)][string]$Message)
@@ -24,7 +47,13 @@ function Invoke-CleanupOnce {
     }
 
     Write-ServiceLog "cleanup start: $CleanupScript"
-    & $CleanupScript -Clean | Out-Null
+
+    if ([string]::IsNullOrWhiteSpace($BasePath)) {
+        & $CleanupScript -Clean | Out-Null
+    } else {
+        & $CleanupScript -Clean -BasePath $BasePath | Out-Null
+    }
+
     Write-ServiceLog 'cleanup done'
 }
 

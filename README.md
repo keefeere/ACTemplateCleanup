@@ -171,7 +171,7 @@ Defaults:
 The service runner repeatedly calls:
 
 ```powershell
-ArmouryCrateGamepadCleanup.ps1 -Clean
+ArmouryCrateGamepadCleanup.ps1 -Clean -BasePath "<GamepadCustomize path>"
 ```
 
 Default interval:
@@ -205,6 +205,14 @@ Install or update the service from an elevated PowerShell window:
 .\Install-ArmouryCrateGamepadCleanupService.ps1 -NssmPath "$env:WINDIR\System32\nssm.exe" -IntervalSeconds 300
 ```
 
+The installer captures the current user's Armoury Crate SE `GamepadCustomize` path and passes it to the service runner explicitly. This matters because Windows services may run under a service account whose `%LOCALAPPDATA%` is not the interactive user's `%LOCALAPPDATA%`.
+
+Override the target folder if needed:
+
+```powershell
+.\Install-ArmouryCrateGamepadCleanupService.ps1 -BasePath "$env:LOCALAPPDATA\Packages\B9ECED6F.ArmouryCrateSE_qmba6cd70vzyy\LocalState\GamepadCustomize"
+```
+
 Default service name:
 
 ```text
@@ -214,7 +222,7 @@ ArmouryCrateGamepadCleanup
 Default logs:
 
 ```text
-%USERPROFILE%\ArmouryCrateGamepadCleanupService.log
+<script directory>\ArmouryCrateGamepadCleanupService.log
 %USERPROFILE%\ArmouryCrateGamepadCleanupService.stdout.log
 %USERPROFILE%\ArmouryCrateGamepadCleanupService.stderr.log
 ```
@@ -241,17 +249,18 @@ nssm remove ArmouryCrateGamepadCleanup confirm
 
 The cleanup and prettifier scripts can be run directly from this repository folder.
 
-The service scripts also default to this repository folder:
+The service scripts also default to their own script directory:
 
 ```text
-$PSScriptRoot
+directory containing the running .ps1 file
 ```
 
 Specifically:
 
 - `ArmouryCrateGamepadCleanupService.ps1` defaults to `ArmouryCrateGamepadCleanup.ps1` in the same folder
 - `Install-ArmouryCrateGamepadCleanupService.ps1` defaults to `ArmouryCrateGamepadCleanupService.ps1` in the same folder
-- service logs default to `%USERPROFILE%`
+- the runner log defaults to the same folder as the runner script
+- NSSM stdout/stderr logs default to `%USERPROFILE%`
 
 If you want to run the service with scripts from another folder, pass `-RunnerScript` to the installer and pass `-CleanupScript` to the runner if needed.
 

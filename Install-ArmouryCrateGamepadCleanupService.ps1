@@ -5,11 +5,38 @@ param(
     [string]$ServiceName = 'ArmouryCrateGamepadCleanup',
     [string]$NssmPath = '',
     [int]$IntervalSeconds = 300,
-    [string]$RunnerScript = (Join-Path $PSScriptRoot 'ArmouryCrateGamepadCleanupService.ps1'),
+    [string]$RunnerScript = '',
+    [string]$BasePath = '',
     [string]$LogDirectory = $env:USERPROFILE
 )
 
 $ErrorActionPreference = 'Stop'
+
+$ScriptPath = if (-not [string]::IsNullOrWhiteSpace($PSCommandPath)) {
+    $PSCommandPath
+} else {
+    $MyInvocation.MyCommand.Path
+}
+
+$ScriptDirectory = if (-not [string]::IsNullOrWhiteSpace($ScriptPath)) {
+    Split-Path -Parent $ScriptPath
+} elseif (-not [string]::IsNullOrWhiteSpace($PSScriptRoot)) {
+    $PSScriptRoot
+} else {
+    (Get-Location).Path
+}
+
+if ([string]::IsNullOrWhiteSpace($RunnerScript)) {
+    $RunnerScript = Join-Path $ScriptDirectory 'ArmouryCrateGamepadCleanupService.ps1'
+}
+
+if ([string]::IsNullOrWhiteSpace($LogDirectory)) {
+    $LogDirectory = $env:USERPROFILE
+}
+
+if ([string]::IsNullOrWhiteSpace($BasePath)) {
+    $BasePath = Join-Path $env:LOCALAPPDATA 'Packages\B9ECED6F.ArmouryCrateSE_qmba6cd70vzyy\LocalState\GamepadCustomize'
+}
 
 function Resolve-NssmPath {
     param([string]$ExplicitPath)
@@ -61,7 +88,7 @@ $runnerFullPath = (Resolve-Path -LiteralPath $RunnerScript).Path
 $appDirectory = Split-Path -Parent $runnerFullPath
 $nssm = Resolve-NssmPath -ExplicitPath $NssmPath
 $powerShell = Join-Path $env:WINDIR 'System32\WindowsPowerShell\v1.0\powershell.exe'
-$appParams = '-NoProfile -ExecutionPolicy Bypass -File "{0}" -IntervalSeconds {1}' -f $runnerFullPath, $IntervalSeconds
+$appParams = '-NoProfile -ExecutionPolicy Bypass -File "{0}" -IntervalSeconds {1} -BasePath "{2}"' -f $runnerFullPath, $IntervalSeconds, $BasePath
 $stdout = Join-Path $LogDirectory 'ArmouryCrateGamepadCleanupService.stdout.log'
 $stderr = Join-Path $LogDirectory 'ArmouryCrateGamepadCleanupService.stderr.log'
 
@@ -92,5 +119,6 @@ if ($service.Status -ne 'Running') {
 Get-Service -Name $ServiceName | Format-List Name, DisplayName, Status, StartType
 Write-Host "Installed with NSSM: $nssm"
 Write-Host "Runner: $runnerFullPath"
+Write-Host "BasePath: $BasePath"
 Write-Host "IntervalSeconds: $IntervalSeconds"
 Write-Host "Logs: $stdout ; $stderr"
